@@ -282,3 +282,13 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
   console.log(\`🔗 Interface Blockchain ${project} sur le port \${PORT}\`);
 });
+
+// Endpoint pour l'écosystème
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    project: '$project',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});

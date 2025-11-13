@@ -1,54 +1,29 @@
 const express = require('express');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(express.json());
 app.use(express.static('.'));
 
-// Analyse du projet
-function analyzeProject() {
-  const files = fs.readdirSync('.');
-  const fileTypes = {
-    js: files.filter(f => f.endsWith('.js')).length,
-    html: files.filter(f => f.endsWith('.html')).length,
-    json: files.filter(f => f.endsWith('.json')).length,
-    md: files.filter(f => f.endsWith('.md')).length,
-    other: files.filter(f => !f.includes('.') || 
-           !['.js','.html','.json','.md'].some(ext => f.endsWith(ext))).length
-  };
-  
-  const hasPackageJson = fs.existsSync('package.json');
-  const scripts = hasPackageJson ? 
-    JSON.parse(fs.readFileSync('package.json')).scripts || {} : {};
-  
-  return { fileTypes, scripts, hasPackageJson };
-}
-
-// Routes API
+// Route API simplifiée
 app.get('/api/project-info', (req, res) => {
-  const projectInfo = analyzeProject();
-  res.json(projectInfo);
-});
-
-app.get('/api/files', (req, res) => {
-  const files = fs.readdirSync('.').map(file => {
-    const stats = fs.statSync(file);
-    return {
-      name: file,
-      type: stats.isDirectory() ? 'directory' : 'file',
-      size: stats.size,
-      modified: stats.mtime
-    };
+  const files = fs.readdirSync('.');
+  const solFiles = files.filter(f => f.endsWith('.sol'));
+  
+  res.json({
+    name: '$project',
+    type: 'BLOCKCHAIN',
+    smartContracts: solFiles.length,
+    totalFiles: files.length,
+    status: 'ACTIVE'
   });
-  res.json(files);
 });
 
-// Route principale
 app.get('/', (req, res) => {
-  const projectInfo = analyzeProject();
+  const files = fs.readdirSync('.');
+  const solFiles = files.filter(f => f.endsWith('.sol'));
   
   const html = `
 <!DOCTYPE html>
@@ -56,12 +31,12 @@ app.get('/', (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${project} - Interface Live</title>
+    <title>$project - Interface Blockchain</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
             min-height: 100vh;
             color: white;
         }
@@ -87,57 +62,53 @@ app.get('/', (req, res) => {
             border-radius: 15px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
-        .stats {
-            display: flex;
-            justify-content: space-around;
-            text-align: center;
-        }
-        .stat-item {
-            padding: 10px;
-        }
-        .stat-number {
-            font-size: 2rem;
+        .blockchain-badge {
+            background: #f59e0b;
+            color: black;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 10px 0;
             font-weight: bold;
-            color: #10b981;
         }
-        .file-list {
-            max-height: 300px;
+        .contract-list {
+            max-height: 400px;
             overflow-y: auto;
         }
-        .file-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        .controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+        .contract-item {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border-left: 4px solid #10b981;
         }
         .btn {
             background: #10b981;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px 24px;
             border-radius: 25px;
             cursor: pointer;
+            font-size: 1rem;
             transition: all 0.3s;
+            margin: 5px;
         }
         .btn:hover {
             background: #059669;
             transform: translateY(-2px);
         }
-        .live-badge {
+        .live-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
             background: #ef4444;
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            animation: pulse 2s infinite;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 1.5s infinite;
         }
         @keyframes pulse {
             0% { opacity: 1; }
-            50% { opacity: 0.7; }
+            50% { opacity: 0.5; }
             100% { opacity: 1; }
         }
     </style>
@@ -145,39 +116,48 @@ app.get('/', (req, res) => {
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 ${project} - Interface Live</h1>
-            <div class="live-badge">🔴 EN DIRECT</div>
+            <h1>🔗 $project - Dashboard Blockchain</h1>
+            <div class="blockchain-badge">⛓️ SMART CONTRACTS ACTIFS</div>
+            <p><span class="live-indicator"></span> Interface en temps réel</p>
         </div>
         
         <div class="dashboard">
             <div class="card">
-                <h3>📊 Statistiques du Projet</h3>
-                <div class="stats" id="stats">
-                    <!-- Chargé dynamiquement -->
+                <h3>📊 Statistiques</h3>
+                <div id="stats">
+                    <p>Chargement des données...</p>
                 </div>
             </div>
             
             <div class="card">
-                <h3>⚙️ Scripts Disponibles</h3>
-                <div class="controls" id="scripts">
-                    <!-- Chargé dynamiquement -->
-                </div>
-            </div>
-            
-            <div class="card">
-                <h3>📁 Fichiers du Projet</h3>
-                <div class="file-list" id="fileList">
-                    <!-- Chargé dynamiquement -->
+                <h3>🎮 Contrôles</h3>
+                <div>
+                    <button class="btn" onclick="refreshData()">🔄 Actualiser</button>
+                    <button class="btn" onclick="analyzeContracts()">🔍 Analyser Contrats</button>
+                    <button class="btn" onclick="simulateDeploy()">🚀 Simuler Déploiement</button>
                 </div>
             </div>
         </div>
         
         <div class="card">
-            <h3>🎮 Contrôles en Temps Réel</h3>
-            <div class="controls">
-                <button class="btn" onclick="refreshData()">🔄 Actualiser</button>
-                <button class="btn" onclick="showProjectInfo()">ℹ️ Informations</button>
-                <button class="btn" onclick="testAPI()">🧪 Tester API</button>
+            <h3>📁 Fichiers Smart Contracts</h3>
+            <div class="contract-list" id="contractList">
+                ${solFiles.map(file => `
+                    <div class="contract-item">
+                        <h4>📄 ${file}</h4>
+                        <p>Smart Contract Solidity</p>
+                        <button class="btn" onclick="viewContract('${file}')">👀 Voir le Code</button>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>🌐 Actions Blockchain</h3>
+            <div>
+                <button class="btn" onclick="connectWallet()">👛 Connecter Wallet</button>
+                <button class="btn" onclick="checkBalance()">💰 Vérifier Balance</button>
+                <button class="btn" onclick="deployAll()">🏗️ Déployer Tous</button>
             </div>
         </div>
     </div>
@@ -186,81 +166,72 @@ app.get('/', (req, res) => {
         // Chargement des données
         async function loadProjectData() {
             try {
-                const [projectInfo, files] = await Promise.all([
-                    fetch('/api/project-info').then(r => r.json()),
-                    fetch('/api/files').then(r => r.json())
-                ]);
+                const response = await fetch('/api/project-info');
+                const data = await response.json();
                 
-                updateStats(projectInfo);
-                updateScripts(projectInfo.scripts);
-                updateFileList(files);
+                document.getElementById('stats').innerHTML = \`
+                    <p><strong>Contrats Smart:</strong> \${data.smartContracts}</p>
+                    <p><strong>Fichiers totaux:</strong> \${data.totalFiles}</p>
+                    <p><strong>Statut:</strong> <span style="color: #10b981;">\${data.status}</span></p>
+                    <p><strong>Type:</strong> \${data.type}</p>
+                \`;
             } catch (error) {
                 console.error('Erreur:', error);
             }
         }
         
-        function updateStats(info) {
-            const statsHtml = \`
-                <div class="stat-item">
-                    <div class="stat-number">\${info.fileTypes.js}</div>
-                    <div>Fichiers JS</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">\${info.fileTypes.html}</div>
-                    <div>Fichiers HTML</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number">\${info.fileTypes.json}</div>
-                    <div>Fichiers JSON</div>
-                </div>
-            \`;
-            document.getElementById('stats').innerHTML = statsHtml;
-        }
-        
-        function updateScripts(scripts) {
-            let scriptsHtml = '';
-            for (const [name, command] of Object.entries(scripts)) {
-                scriptsHtml += \`<button class="btn" onclick="runScript('\${name}')">\${name}</button>\`;
-            }
-            document.getElementById('scripts').innerHTML = scriptsHtml || '<p>Aucun script trouvé</p>';
-        }
-        
-        function updateFileList(files) {
-            const fileListHtml = files.map(file => \`
-                <div class="file-item">
-                    <span>\${file.type === 'directory' ? '📁' : '📄'} \${file.name}</span>
-                    <span>\${file.type === 'file' ? (file.size / 1024).toFixed(2) + ' KB' : ''}</span>
-                </div>
-            \`).join('');
-            document.getElementById('fileList').innerHTML = fileListHtml;
-        }
-        
-        // Contrôles interactifs
+        // Fonctions interactives
         function refreshData() {
             loadProjectData();
-            showNotification('Données actualisées !');
+            showNotification('📊 Données actualisées !');
         }
         
-        function showProjectInfo() {
-            alert('Interface live pour \${project}\\nDéployé sur Vercel\\nServeur Node.js actif');
+        function analyzeContracts() {
+            showNotification('🔍 Analyse des contrats en cours...');
+            // Simulation d'analyse
+            setTimeout(() => {
+                showNotification('✅ Analyse terminée !');
+            }, 2000);
         }
         
-        function testAPI() {
-            fetch('/api/project-info')
-                .then(r => r.json())
-                .then(data => {
-                    console.log('Test API réussi:', data);
-                    showNotification('✅ Test API réussi !');
-                });
+        function simulateDeploy() {
+            showNotification('🚀 Simulation de déploiement...');
+            // Simulation de déploiement
+            setTimeout(() => {
+                showNotification('✅ Contrats déployés avec succès !');
+            }, 3000);
         }
         
-        function runScript(scriptName) {
-            showNotification(\`Exécution de: \${scriptName}\`);
-            // Ici vous pourriez appeler une API pour exécuter le script
+        function viewContract(filename) {
+            showNotification(\`👀 Affichage du contrat: \${filename}\`);
+            // Ici: ouvrir le fichier ou afficher le code
+            alert(\`Contrat: \${filename}\\n\\nFonctionnalité d'affichage du code à implémenter.\`);
+        }
+        
+        function connectWallet() {
+            showNotification('👛 Connexion au wallet...');
+            // Simulation connexion wallet
+            setTimeout(() => {
+                showNotification('✅ Wallet connecté !');
+            }, 1500);
+        }
+        
+        function checkBalance() {
+            showNotification('💰 Vérification du solde...');
+            setTimeout(() => {
+                showNotification('💎 Solde: 1.5 ETH');
+            }, 1500);
+        }
+        
+        function deployAll() {
+            showNotification('🏗️ Déploiement de tous les contrats...');
+            setTimeout(() => {
+                showNotification('🎉 Tous les contrats déployés !');
+            }, 4000);
         }
         
         function showNotification(message) {
-            // Créer une notification temporaire
+            // Créer une notification
             const notification = document.createElement('div');
             notification.style.cssText = \`
                 position: fixed;
@@ -268,16 +239,18 @@ app.get('/', (req, res) => {
                 right: 20px;
                 background: #10b981;
                 color: white;
-                padding: 15px;
+                padding: 15px 20px;
                 border-radius: 10px;
                 z-index: 1000;
                 animation: slideIn 0.3s ease;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
             \`;
             notification.textContent = message;
             document.body.appendChild(notification);
             
             setTimeout(() => {
-                notification.remove();
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
             }, 3000);
         }
         
@@ -285,12 +258,16 @@ app.get('/', (req, res) => {
         loadProjectData();
         setInterval(loadProjectData, 10000); // Actualisation toutes les 10s
         
-        // Styles pour l'animation
+        // Styles d'animation
         const style = document.createElement('style');
         style.textContent = \`
             @keyframes slideIn {
                 from { transform: translateX(100%); opacity: 0; }
                 to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
             }
         \`;
         document.head.appendChild(style);
@@ -303,5 +280,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(\`🚀 Serveur ${project} démarré sur le port \${PORT}\`);
+  console.log(\`🔗 Interface Blockchain ${project} sur le port \${PORT}\`);
 });

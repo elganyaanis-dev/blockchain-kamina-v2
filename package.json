@@ -1,0 +1,11 @@
+{
+  "name": "blockchain-kamina-v2",
+  "version": "1.0.0",
+  "scripts": {
+    "compile": "npx hardhat compile"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "hardhat": "^2.19.0"
+  }
+}
